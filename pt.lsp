@@ -72,14 +72,6 @@
 )
 
 ;;; Function to browse for a file
-; (defun browse-file (ext)
-;   ;; Prompt the user to select a file to save
-;   (setq file (getfiled "Select or enter points file" (strcat "points." ext) ext 1))
-;   file  ; Return the selected file path
-; )
-
-
-;;; Function to browse for a file ==> gave an error *Error: bad argument type: FILE nil
 (defun browse-file (ext)
   ;; Get the drawing file name
   (setq dwg-name (getvar 'dwgname))
@@ -98,7 +90,49 @@
   file  ; Return the selected file path
 )
 
+;;; Function to create a points table
+(defun CreatePointTable (insertionPoint ptList)
+  (setq doc (vla-get-ActiveDocument (vlax-get-acad-object)))
+  (setq space (vla-get-ModelSpace doc))
 
+  ;; Convert insertion point to a 3D point
+  (setq insertionPoint (vlax-3D-point insertionPoint))
+
+  ;; Create the table object
+  (setq tbl (vla-AddTable space insertionPoint (+ 2 (length ptList)) 4 1.0 2.0))
+
+  ;; Set the table title
+  (vla-SetText tbl 0 0 "Points Table")
+  (vla-MergeCells tbl 0 0 0 3)
+  (vla-SetCellAlignment tbl 0 0 acMiddleCenter)
+
+  ;; Set the headers
+  (vla-SetText tbl 1 0 "No.")
+  (vla-SetText tbl 1 1 "X")
+  (vla-SetText tbl 1 2 "Y")
+  (vla-SetText tbl 1 3 "Z")
+  (vla-SetCellAlignment tbl 1 0 acMiddleCenter)
+  (vla-SetCellAlignment tbl 1 1 acMiddleCenter)
+  (vla-SetCellAlignment tbl 1 2 acMiddleCenter)
+  (vla-SetCellAlignment tbl 1 3 acMiddleCenter)
+  
+  ;; Add point data
+  (setq i 2)
+  (foreach pt ptList
+    (vla-SetText tbl i 0 (car pt)) ;; Numbering starts from 1
+    (vla-SetText tbl i 1 (rtos (cadr pt) 2 2))
+    (vla-SetText tbl i 2 (rtos (caddr pt) 2 2))
+    (vla-SetText tbl i 3 (rtos (cadddr pt) 2 2))
+    (vla-SetCellAlignment tbl i 0 acMiddleCenter)
+    (vla-SetCellAlignment tbl i 1 acMiddleCenter)
+    (vla-SetCellAlignment tbl i 2 acMiddleCenter)
+    (vla-SetCellAlignment tbl i 3 acMiddleCenter)
+    (setq i (1+ i))
+  )
+
+  ;; Redraw the table to reflect changes
+  (vla-Update tbl)
+)
 
 ;;; Main function to export points
 (defun c:pt()
@@ -146,36 +180,26 @@
   (setq pn start_pn)
   (setq hs-factor (/ h-scale 100))
   (setq p 0)
-  (setq n 1)
   (setq pt_list '())
 
-  ;; Loop to get points from the user
-  (while p
-    (setq p (getpoint "\nSelect Point <Exit>:"))
-    (if p
-      (progn
-        ;; Generate point code and coordinates
-        (setq str_pn (itoa pn))
-        (setq pt_code (strcat pre_code str_pn))
-        (setq ptxt (list (- (car p) (* 0.5 hs-factor))
-                         (+ (cadr p) (* 0.5 hs-factor))))
-
-        ;; Create point and text entities in AutoCAD
-        (command "point" p)
-        (command "text" "m" ptxt "0" pt_code)
-
-        ;; Write point data to the file
-        (if (equal filetype "TXT")
-          (princ (strcat pt_code "\t" (rtos (car p)) "\t" (rtos (cadr p)) "\n") file)
-          (princ (strcat pt_code "," (rtos (car p)) "," (rtos (cadr p)) "\n") file)
-        )
-        ;; Increment point number
-        (setq pn (+ pn 1))
-
-        ;; Append point data to the list
-        (setq pt_list (append pt_list (list (append (list pt_code) p))))
-      )
-    )
+  ;; Loop to select multiple points
+  (while (setq p (getpoint (strcat "\nPoint No. " (itoa pn) " : " pre_code (itoa pn))))
+    ;; Create point code by combining prefix code and point number
+    (setq pt_code (strcat pre_code (itoa pn)))
+    ;; Calculate text insertion point
+    (setq ptxt (list (- (car p) (* 0.5 hs-factor))
+                     (+ (cadr p) (* 0.5 hs-factor))))
+    ;; Create point and text entities in AutoCAD
+    (command "point" p)
+    (command "text" "m" ptxt "0" pt_code)
+    ;; Write point data to the file
+    (if (equal filetype "TXT")
+      (princ (strcat pt_code "\t" (rtos (car p) 2 2) "\t" (rtos (cadr p) 2 2) "\n") file)
+      (princ (strcat pt_code "," (rtos (car p) 2 2) "," (rtos (cadr p) 2 2) "\n") file))
+    ;; Increment point number
+    (setq pn (1+ pn))
+    ;; Append point data to the list
+    (setq pt_list (append pt_list (list (list pt_code (car p) (cadr p) 0.0))))
   )
 
   ;; Prompt user to select upper left corner for the table
@@ -189,78 +213,8 @@
     )
   )
 
-  ;; Calculate positions for the table
-  (setq p_r_up (list (+ (car p_l_up) (* 7.2 hs-factor))
-                     (cadr p_l_up)))
-  (setq ph1 (list (car p_l_up)
-                  (- (cadr p_l_up) (* 1 hs-factor))))
-  (setq ph2 (list (car p_r_up)
-                  (- (cadr p_r_up) (* 1 hs-factor))))
-
-  (setq ph_txt1 (list (+ (car p_l_up) (* 0.6 hs-factor))
-                      (- (cadr p_l_up) (* 0.5 hs-factor))))
-  (setq ph_txt2 (list (+ (car p_l_up) (* 2.7 hs-factor))
-                      (- (cadr p_l_up) (* 0.5 hs-factor))))
-  (setq ph_txt3 (list (+ (car p_l_up) (* 5.7 hs-factor))
-                      (- (cadr p_l_up) (* 0.5 hs-factor))))
-
-  ;; Create table header
-  (command "line" p_l_up p_r_up "")
-  (command "line" ph1 ph2 "")
-  (command "text" "m" ph_txt1 "0" "Pt.")
-  (command "text" "m" ph_txt2 "0" "X")
-  (command "text" "m" ph_txt3 "0" "Y")
-
-  ;; Loop to create table rows
-  (setq len_ptlst (length pt_list))
-  (setq n_lst 0)
-  (repeat len_ptlst
-    (setq p1 (list (car p_l_up)
-                   (- (cadr p_l_up) (* (+ n_lst 2) hs-factor))))
-    (setq p2 (list (car p_r_up)
-                   (- (cadr p_r_up) (* (+ n_lst 2) hs-factor))))
-
-    (setq ptxt1 (list (+ (car p1) (* 0.6 hs-factor))
-                      (- (cadr p1) (* 0.5 hs-factor))))
-    (setq ptxt2 (list (+ (car p1) (* 2.7 hs-factor))
-                      (- (cadr p1) (* 0.5 hs-factor))))
-    (setq ptxt3 (list (+ (car p1) (* 5.7 hs-factor))
-                      (- (cadr p1) (* 0.5 hs-factor))))
-
-    ;; Get the X and Y coordinates of the point
-    (setq x (rtos (cadr (nth n_lst pt_list))))
-    (setq y (rtos (caddr (nth n_lst pt_list))))
-
-    ;; Write point data to the file
-    (if (equal filetype "TXT")
-      (princ (strcat (nth 0 (nth n_lst pt_list)) "\t" x "\t" y "\n") file)
-      (princ (strcat (nth 0 (nth n_lst pt_list)) "," x "," y "\n") file)
-    )
-
-    ;; Create text entities and lines in AutoCAD
-    (command "line" p1 p2 "")
-    (command "text" "m" ptxt1 "0" (nth 0 (nth n_lst pt_list)))
-    (command "text" "m" ptxt2 "0" x)
-    (command "text" "m" ptxt3 "0" y)
-
-    ;; Increment the point list index
-    (setq n_lst (+ n_lst 1))
-  )
-
-  ;; Create vertical lines for the table
-  (setq pv1 (list (+ (car p_l_up) (* 1.2 hs-factor))
-                  (cadr p_l_up)))
-  (setq pv2 (list (+ (car p_l_up) (* 4.2 hs-factor))
-                  (cadr p_l_up)))
-  (setq pv3 (list (+ (car p1) (* 1.2 hs-factor))
-                  (cadr p1)))
-  (setq pv4 (list (+ (car p1) (* 4.2 hs-factor))
-                  (cadr p1)))
-
-  (command "line" p_l_up p1 "")
-  (command "line" pv1 pv3 "")
-  (command "line" pv2 pv4 "")
-  (command "line" p_r_up p2 "")
+  ;; Create table using the previously defined function
+  (CreatePointTable p_l_up pt_list)
 
   ;; Reset AutoCAD variables to their original state
   (setvar "cmdecho" echo)
