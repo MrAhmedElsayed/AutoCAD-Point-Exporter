@@ -1,0 +1,12 @@
+;;; Visual LISP make file [V1.0] pt saved to:[C:/Users/ahmed/Desktop/AutoCAD-Point-Exporter] at:[7/10/24] 
+(PRV-DEF (:target . "pt.VLX")
+	 (:active-x . T)
+	 (:separate-namespace)
+	 (:protected . T)
+	 (:load-file-list (:lsp "pt.lsp"))
+	 (:require-file-list)
+	 (:ob-directory)
+	 (:tmp-directory)
+	 (:optimization . st)
+)
+;; EOF

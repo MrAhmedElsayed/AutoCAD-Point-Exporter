@@ -1,3 +1,7 @@
+;; Name: Ahmed Elsayed
+;; Date: 7/10/2024
+;; Description: AutoLISP program 'pt.lsp' for AutoCAD, designed to automate point creation, exporting, and table generation, ensuring reliable and accurate data integration within AutoCAD environments.
+
 ;;; Error handler function to reset variables and print error message
 (defun derr (s)
   ;; Check if the error is not "Function cancelled"
