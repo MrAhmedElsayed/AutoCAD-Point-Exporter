@@ -1,4 +1,4 @@
-# AutoCAD Point Exporter
+# AutoCAD Point Exporter (lsp)
 
 AutoCAD Point Exporter is an AutoLISP utility designed for AutoCAD users to efficiently export selected points to CSV or text files and generate a coordinate table with customizable prefix codes and numbering. 
 
